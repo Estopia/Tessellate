@@ -25,6 +25,7 @@ export default function App() {
   const [lightbox, setLightbox] = useState<number | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const setZoom = useCallback((zoom: number) => update({ zoom }), [update])
   useZoom(containerRef, settings.zoom, setZoom)
@@ -63,6 +64,7 @@ export default function App() {
       downloadBlob(blob, suggestFilename(image.name, 'image/png'))
     } catch (err) {
       console.error('Failed to export image', err)
+      setExportError('Could not export that image.')
     }
   }, [])
 
@@ -70,6 +72,7 @@ export default function App() {
     async (format: ExportFormat) => {
       if (images.length === 0 || width === 0) return
       setIsExporting(true)
+      setExportError(null)
       try {
         const blob = await composeGridToBlob(images, layout, width, {
           gap: settings.gap,
@@ -79,6 +82,7 @@ export default function App() {
         downloadBlob(blob, suggestFilename('tessellate-grid', format))
       } catch (err) {
         console.error('Failed to export grid', err)
+        setExportError('Export failed — the grid may be too large. Try lowering zoom or removing images.')
       } finally {
         setIsExporting(false)
       }
@@ -193,10 +197,20 @@ export default function App() {
             </div>
           )}
 
-          {lastError && !isLoading && (
+          {lastError && !isLoading && !exportError && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-amber-500/40 bg-amber-500/15 px-4 py-1.5 text-sm text-amber-200 shadow-lg">
               {lastError}
             </div>
+          )}
+
+          {exportError && (
+            <button
+              type="button"
+              onClick={() => setExportError(null)}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-red-500/40 bg-red-500/15 px-4 py-1.5 text-sm text-red-200 shadow-lg"
+            >
+              {exportError} ✕
+            </button>
           )}
         </main>
       </div>

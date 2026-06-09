@@ -7,6 +7,7 @@ export type ComposeOptions = {
   format?: 'image/png' | 'image/jpeg' | 'image/webp'
   quality?: number
   maxWidth?: number
+  maxHeight?: number
 }
 
 /**
@@ -21,7 +22,13 @@ export async function composeGridToBlob(
   const format = options.format ?? 'image/png'
   const quality = options.quality ?? 0.92
   const maxWidth = options.maxWidth ?? 4096
-  const scale = Math.min(maxWidth / Math.max(containerWidth, 1), 3)
+  const maxHeight = options.maxHeight ?? 16384
+  const safeWidth = Math.max(containerWidth, 1)
+  const safeHeight = Math.max(result.height, 1)
+  // Bound BOTH axes (not just width): a tall grid multiplied by `scale` can
+  // otherwise exceed the browser's maximum canvas dimensions, which makes
+  // toBlob() return null and the export silently fail. Downscale to fit instead.
+  const scale = Math.min(maxWidth / safeWidth, maxHeight / safeHeight, 3)
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
 
@@ -29,8 +36,8 @@ export async function composeGridToBlob(
     throw new Error('Failed to create canvas rendering context')
   }
 
-  canvas.width = Math.round(containerWidth * scale)
-  canvas.height = Math.round(result.height * scale)
+  canvas.width = Math.max(1, Math.round(safeWidth * scale))
+  canvas.height = Math.max(1, Math.round(safeHeight * scale))
 
   if (options.background !== 'transparent' || format === 'image/jpeg') {
     context.fillStyle = options.background ?? '#0b0c0f'
