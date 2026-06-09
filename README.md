@@ -143,4 +143,8 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for developmen
 
 ## License
 
-Tessellate is released under the [MIT License](LICENSE).
+Tessellate is released under the [MIT License](LICENSE). Copyright © 2026 [Estopia](https://estopia.net).
+
+---
+
+Built by [Estopia](https://estopia.net). Explore our other open-source projects at [open.estopia.net](https://open.estopia.net).

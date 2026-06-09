@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Maximize2, Minimize2, SlidersHorizontal } from 'lucide-react'
+import { Boxes, Maximize2, Minimize2, SlidersHorizontal } from 'lucide-react'
 import { computeLayout, type ImageItem, type LayoutRect } from './lib/layout'
 import { composeGridToBlob, cropImageToBlob, downloadBlob, suggestFilename } from './lib/image'
 import { useImages } from './hooks/useImages'
@@ -114,6 +114,16 @@ export default function App() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <a
+              href="https://open.estopia.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Estopia open-source projects (open.estopia.net)"
+              className="hover:bg-surface-2 focus-visible:ring-accent-hover inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-zinc-300 transition-colors hover:text-white focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <Boxes className="h-4 w-4" />
+              <span className="hidden md:inline">open.estopia.net</span>
+            </a>
             <IconButton
               label="Hide menus (focus mode)"
               onClick={() => {
