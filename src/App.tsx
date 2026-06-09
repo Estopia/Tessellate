@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import { SlidersHorizontal } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Maximize2, Minimize2, SlidersHorizontal } from 'lucide-react'
 import { computeLayout, type ImageItem, type LayoutRect } from './lib/layout'
 import { composeGridToBlob, cropImageToBlob, downloadBlob, suggestFilename } from './lib/image'
 import { useImages } from './hooks/useImages'
@@ -24,6 +24,7 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [lightbox, setLightbox] = useState<number | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [focusMode, setFocusMode] = useState(false)
 
   const setZoom = useCallback((zoom: number) => update({ zoom }), [update])
   useZoom(containerRef, settings.zoom, setZoom)
@@ -36,6 +37,25 @@ export default function App() {
     () => computeLayout({ items: dims, containerWidth: width, settings }),
     [dims, width, settings],
   )
+
+  // Focus mode: `F` toggles hiding the chrome, `Esc` restores it (unless the
+  // lightbox is open, which handles Esc itself). Ignored while typing in inputs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      const typing =
+        !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+      if (typing) return
+      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        setFocusMode((v) => !v)
+      } else if (e.key === 'Escape' && lightbox === null) {
+        setFocusMode(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox])
 
   const handleDownloadOne = useCallback(async (image: ImageItem, rect: LayoutRect) => {
     try {
@@ -72,35 +92,50 @@ export default function App() {
     <div className="flex h-full flex-col">
       <input {...inputProps} />
 
-      <header className="border-border flex items-center justify-between gap-3 border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          <IconButton
-            label="Open settings"
-            className="lg:hidden"
-            onClick={() => setDrawerOpen(true)}
-          >
-            <SlidersHorizontal className="h-5 w-5" />
-          </IconButton>
-          <h1 className="text-base font-semibold tracking-tight">
-            <span className="text-accent">Tessellate</span>
-            <span className="ml-2 hidden text-sm font-normal text-zinc-500 sm:inline">
-              dynamic image grids
-            </span>
-          </h1>
-        </div>
-        <Toolbar
-          count={images.length}
-          isExporting={isExporting}
-          onAdd={open}
-          onClear={clearImages}
-          onExport={handleExportGrid}
-        />
-      </header>
+      {!focusMode && (
+        <header className="border-border flex items-center justify-between gap-3 border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <IconButton
+              label="Open settings"
+              className="lg:hidden"
+              onClick={() => setDrawerOpen(true)}
+            >
+              <SlidersHorizontal className="h-5 w-5" />
+            </IconButton>
+            <h1 className="text-base font-semibold tracking-tight">
+              <span className="text-accent">Tessellate</span>
+              <span className="ml-2 hidden text-sm font-normal text-zinc-500 sm:inline">
+                dynamic image grids
+              </span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <IconButton
+              label="Hide menus (focus mode)"
+              onClick={() => {
+                setFocusMode(true)
+                setDrawerOpen(false)
+              }}
+            >
+              <Maximize2 className="h-5 w-5" />
+            </IconButton>
+            <Toolbar
+              count={images.length}
+              isExporting={isExporting}
+              onAdd={open}
+              onClear={clearImages}
+              onExport={handleExportGrid}
+            />
+          </div>
+        </header>
+      )}
 
       <div className="flex min-h-0 flex-1">
-        <aside className="border-border hidden w-80 shrink-0 overflow-hidden border-r lg:block">
-          <SettingsPanel />
-        </aside>
+        {!focusMode && (
+          <aside className="border-border hidden w-80 shrink-0 overflow-hidden border-r lg:block">
+            <SettingsPanel />
+          </aside>
+        )}
 
         {drawerOpen && (
           <div className="fixed inset-0 z-40 lg:hidden">
@@ -116,6 +151,17 @@ export default function App() {
         )}
 
         <main {...dropHandlers} className="relative min-h-0 flex-1 overflow-y-auto">
+          {focusMode && (
+            <button
+              type="button"
+              onClick={() => setFocusMode(false)}
+              aria-label="Show menus"
+              title="Show menus (Esc)"
+              className="border-border bg-surface/80 hover:bg-surface-2 fixed top-3 right-3 z-50 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm text-zinc-200 shadow-lg backdrop-blur transition-colors"
+            >
+              <Minimize2 className="h-4 w-4" /> Menus
+            </button>
+          )}
           <div className="p-4">
             <div ref={containerRef} className="w-full">
               {hasImages ? (
