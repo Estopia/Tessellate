@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    image: tessellate:latest
+    container_name: tessellate
+    ports:
+      - "${TESSELLATE_PORT:-8080}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+# Reverse proxy example (uncomment and adapt):
+# services:
+#   web:
+#     expose:
+#       - "80" # Use expose instead of ports when fronted by a proxy.
+#     networks:
+#       - proxy
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.tessellate.rule=Host(`tessellate.example.com`)"
+#       - "traefik.http.routers.tessellate.entrypoints=websecure"
+#       - "traefik.http.routers.tessellate.tls=true"
+#       - "traefik.http.services.tessellate.loadbalancer.server.port=80"
+# networks:
+#   proxy:
+#     external: true
