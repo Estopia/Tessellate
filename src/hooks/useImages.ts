@@ -6,6 +6,8 @@ import type { ImageItem } from '../lib/layout'
 const ACCEPTED_TYPE = /^image\//
 /** Reject anything larger than this to avoid locking up the browser. */
 const MAX_BYTES = 30 * 1024 * 1024
+/** How long "Clear all" can be undone before object URLs are actually revoked. */
+const CLEAR_UNDO_MS = 6000
 
 let idCounter = 0
 const nextId = () => `img_${Date.now().toString(36)}_${(idCounter++).toString(36)}`
@@ -21,7 +23,14 @@ export interface UseImagesResult {
   lastError: string | null
   addFiles: (files: FileList | File[]) => Promise<void>
   removeImage: (id: string) => void
+  /** Clears all images. Object URLs aren't revoked immediately — see {@link undoClear}. */
   clearImages: () => void
+  /** Restores the images removed by the most recent {@link clearImages}, if still within the undo window. */
+  undoClear: () => void
+  /** Whether a just-cleared batch can still be restored via {@link undoClear}. */
+  canUndoClear: boolean
+  /** Dismiss the current `lastError`, if any. */
+  clearLastError: () => void
   /** Move an image from one index to another (used by drag-to-reorder). */
   reorderImages: (fromIndex: number, toIndex: number) => void
 }
@@ -29,12 +38,14 @@ export interface UseImagesResult {
 /**
  * Owns the in-memory list of uploaded images. All decoding happens client-side
  * via {@link loadImage}; the original `File` is retained for full-resolution
- * export. Object URLs are revoked on removal, clear, and unmount to avoid leaks.
+ * export. Object URLs are revoked on removal, clear (after a short undo
+ * window), and unmount to avoid leaks.
  */
 export function useImages(): UseImagesResult {
   const [images, setImages] = useState<ImageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [lastError, setLastError] = useState<string | null>(null)
+  const [canUndoClear, setCanUndoClear] = useState(false)
 
   // Mirror the latest images in a ref so async work and unmount cleanup can read
   // them without re-creating callbacks or stale closures. Synced via an effect so
@@ -43,6 +54,21 @@ export function useImages(): UseImagesResult {
   useEffect(() => {
     imagesRef.current = images
   }, [images])
+
+  // Images removed by the most recent `clearImages()`, kept around (URLs not
+  // yet revoked) until the undo window elapses or `undoClear()` is called.
+  const pendingClearRef = useRef<{ images: ImageItem[]; timer: ReturnType<typeof setTimeout> } | null>(
+    null,
+  )
+
+  const finalizePendingClear = useCallback(() => {
+    const pending = pendingClearRef.current
+    if (!pending) return
+    clearTimeout(pending.timer)
+    pending.images.forEach((i) => revokeImage(i.url))
+    pendingClearRef.current = null
+    setCanUndoClear(false)
+  }, [])
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const incoming = Array.from(files)
@@ -82,10 +108,26 @@ export function useImages(): UseImagesResult {
 
   const clearImages = useCallback(() => {
     setImages((prev) => {
-      prev.forEach((i) => revokeImage(i.url))
+      if (prev.length === 0) return prev
+      // Finalize any earlier pending clear first (shouldn't normally happen).
+      finalizePendingClear()
+      const timer = setTimeout(finalizePendingClear, CLEAR_UNDO_MS)
+      pendingClearRef.current = { images: prev, timer }
+      setCanUndoClear(true)
       return []
     })
+  }, [finalizePendingClear])
+
+  const undoClear = useCallback(() => {
+    const pending = pendingClearRef.current
+    if (!pending) return
+    clearTimeout(pending.timer)
+    pendingClearRef.current = null
+    setCanUndoClear(false)
+    setImages(pending.images)
   }, [])
+
+  const clearLastError = useCallback(() => setLastError(null), [])
 
   const reorderImages = useCallback((fromIndex: number, toIndex: number) => {
     setImages((prev) => {
@@ -105,13 +147,28 @@ export function useImages(): UseImagesResult {
     })
   }, [])
 
-  // Revoke every object URL when the app unmounts.
+  // Revoke every object URL (including any still-pending clear) when the app unmounts.
   useEffect(
     () => () => {
       imagesRef.current.forEach((i) => revokeImage(i.url))
+      if (pendingClearRef.current) {
+        clearTimeout(pendingClearRef.current.timer)
+        pendingClearRef.current.images.forEach((i) => revokeImage(i.url))
+      }
     },
     [],
   )
 
-  return { images, isLoading, lastError, addFiles, removeImage, clearImages, reorderImages }
+  return {
+    images,
+    isLoading,
+    lastError,
+    addFiles,
+    removeImage,
+    clearImages,
+    undoClear,
+    canUndoClear,
+    clearLastError,
+    reorderImages,
+  }
 }

@@ -53,7 +53,7 @@ export function GalleryItem({ image, rect, onRemove, onDownload, onOpen }: Galle
       onClick={() => onOpen(rect.index)}
       className={cn(
         'group absolute overflow-hidden rounded-md bg-surface-2 select-none',
-        isDragging ? 'cursor-grabbing opacity-90 shadow-2xl ring-2 ring-accent' : 'cursor-grab',
+        isDragging ? 'ring-text/60 cursor-grabbing opacity-90 shadow-2xl ring-2' : 'cursor-grab',
       )}
     >
       <img
@@ -65,7 +65,7 @@ export function GalleryItem({ image, rect, onRemove, onDownload, onOpen }: Galle
         style={{ objectPosition: `${posX}% ${posY}%` }}
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+      <div className="gallery-item-controls absolute top-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
         <button
           type="button"
           aria-label={`Download ${image.name}`}
@@ -75,7 +75,7 @@ export function GalleryItem({ image, rect, onRemove, onDownload, onOpen }: Galle
             e.stopPropagation()
             onDownload(image, rect)
           }}
-          className="grid h-7 w-7 place-items-center rounded-md bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75 focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
+          className="grid h-11 w-11 place-items-center rounded-md bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75 focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
         >
           <Download className="h-4 w-4" />
         </button>
@@ -88,7 +88,7 @@ export function GalleryItem({ image, rect, onRemove, onDownload, onOpen }: Galle
             e.stopPropagation()
             onRemove(image.id)
           }}
-          className="grid h-7 w-7 place-items-center rounded-md bg-black/55 text-white backdrop-blur transition-colors hover:bg-red-600 focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
+          className="grid h-11 w-11 place-items-center rounded-md bg-black/55 text-white backdrop-blur transition-colors hover:bg-danger focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
         >
           <X className="h-4 w-4" />
         </button>

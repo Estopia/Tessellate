@@ -16,8 +16,8 @@ export function Slider({ label, value, min, max, step = 1, onChange, format }: S
   return (
     <label className="block">
       <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="font-medium text-zinc-200">{label}</span>
-        <span className="tabular-nums text-zinc-400">{format ? format(value) : value}</span>
+        <span className="text-text font-medium">{label}</span>
+        <span className="text-text-muted tabular-nums">{format ? format(value) : value}</span>
       </div>
       <input
         type="range"

@@ -9,6 +9,31 @@
       content="Tessellate — a fast, private, client-side tool to arrange batches of images into justified, fixed-scale, or masonry grids. No uploads; everything runs in your browser."
     />
     <title>Tessellate — Dynamic Image Grid</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Applied synchronously, before first paint, to avoid a flash of the
+      // wrong theme. Kept in sync with src/state/ThemeContext.tsx.
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('tessellate:theme')
+          var pref = stored ? JSON.parse(stored) : 'system'
+          var effective =
+            pref === 'system'
+              ? window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark'
+              : pref
+          document.documentElement.setAttribute('data-theme', effective)
+        } catch {
+          document.documentElement.setAttribute('data-theme', 'dark')
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

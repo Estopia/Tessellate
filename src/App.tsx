@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Boxes, Maximize2, Minimize2, SlidersHorizontal } from 'lucide-react'
+import { Maximize2, Minimize2, Monitor, Moon, SlidersHorizontal, Sun } from 'lucide-react'
 import { computeLayout, type ImageItem, type LayoutRect } from './lib/layout'
 import { composeGridToBlob, cropImageToBlob, downloadBlob, suggestFilename } from './lib/image'
 import { useImages } from './hooks/useImages'
@@ -7,17 +7,33 @@ import { useContainerWidth } from './hooks/useContainerWidth'
 import { useFileDrop } from './hooks/useFileDrop'
 import { useZoom } from './hooks/useZoom'
 import { useSettings } from './state/SettingsContext'
+import { useTheme } from './state/ThemeContext'
 import { Dropzone } from './components/Dropzone'
 import { Gallery } from './components/Gallery'
 import { SettingsPanel } from './components/SettingsPanel'
 import { Toolbar, type ExportFormat } from './components/Toolbar'
 import { Lightbox } from './components/Lightbox'
 import { IconButton } from './components/ui/IconButton'
+import { Toast } from './components/ui/Toast'
+
+const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const
+const THEME_LABEL = { light: 'Light theme', dark: 'Dark theme', system: 'System theme' } as const
 
 export default function App() {
-  const { images, isLoading, lastError, addFiles, removeImage, clearImages, reorderImages } =
-    useImages()
+  const {
+    images,
+    isLoading,
+    lastError,
+    addFiles,
+    removeImage,
+    clearImages,
+    undoClear,
+    canUndoClear,
+    clearLastError,
+    reorderImages,
+  } = useImages()
   const { settings, update } = useSettings()
+  const { theme, cycleTheme } = useTheme()
   const { isDragging, open, inputProps, dropHandlers } = useFileDrop(addFiles)
   const [containerRef, width] = useContainerWidth<HTMLDivElement>()
 
@@ -91,6 +107,7 @@ export default function App() {
   )
 
   const hasImages = images.length > 0
+  const ThemeIcon = THEME_ICON[theme]
 
   return (
     <div className="flex h-full flex-col">
@@ -108,22 +125,15 @@ export default function App() {
             </IconButton>
             <h1 className="text-base font-semibold tracking-tight">
               <span className="text-accent">Tessellate</span>
-              <span className="ml-2 hidden text-sm font-normal text-zinc-500 sm:inline">
+              <span className="text-text-faint ml-2 hidden text-sm font-normal sm:inline">
                 dynamic image grids
               </span>
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <a
-              href="https://open.estopia.net"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Estopia open-source projects (open.estopia.net)"
-              className="hover:bg-surface-2 focus-visible:ring-accent-hover inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-zinc-300 transition-colors hover:text-white focus-visible:ring-2 focus-visible:outline-none"
-            >
-              <Boxes className="h-4 w-4" />
-              <span className="hidden md:inline">open.estopia.net</span>
-            </a>
+            <IconButton label={`${THEME_LABEL[theme]} (click to change)`} onClick={cycleTheme}>
+              <ThemeIcon className="h-5 w-5" />
+            </IconButton>
             <IconButton
               label="Hide menus (focus mode)"
               onClick={() => {
@@ -171,7 +181,7 @@ export default function App() {
               onClick={() => setFocusMode(false)}
               aria-label="Show menus"
               title="Show menus (Esc)"
-              className="border-border bg-surface/80 hover:bg-surface-2 fixed top-3 right-3 z-50 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm text-zinc-200 shadow-lg backdrop-blur transition-colors"
+              className="border-border bg-surface/80 hover:bg-surface-2 text-text fixed top-3 right-3 z-50 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm shadow-lg backdrop-blur transition-colors"
             >
               <Minimize2 className="h-4 w-4" /> Menus
             </button>
@@ -195,32 +205,30 @@ export default function App() {
 
           {isDragging && hasImages && (
             <div className="border-accent bg-accent/10 pointer-events-none absolute inset-0 z-30 m-2 flex items-center justify-center rounded-xl border-2 border-dashed">
-              <span className="bg-surface rounded-lg px-4 py-2 text-sm font-medium text-zinc-100 shadow-lg">
+              <span className="bg-surface text-text rounded-lg px-4 py-2 text-sm font-medium shadow-lg">
                 Drop to add images
               </span>
             </div>
           )}
 
-          {isLoading && (
-            <div className="bg-surface border-border absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border px-4 py-1.5 text-sm text-zinc-300 shadow-lg">
-              Decoding images…
-            </div>
+          {isLoading && <Toast variant="loading">Decoding images…</Toast>}
+
+          {!isLoading && canUndoClear && (
+            <Toast variant="warning" action={{ label: 'Undo', onClick: undoClear }}>
+              Cleared all images.
+            </Toast>
           )}
 
-          {lastError && !isLoading && !exportError && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-amber-500/40 bg-amber-500/15 px-4 py-1.5 text-sm text-amber-200 shadow-lg">
+          {!isLoading && !canUndoClear && lastError && !exportError && (
+            <Toast variant="warning" onDismiss={clearLastError}>
               {lastError}
-            </div>
+            </Toast>
           )}
 
           {exportError && (
-            <button
-              type="button"
-              onClick={() => setExportError(null)}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-red-500/40 bg-red-500/15 px-4 py-1.5 text-sm text-red-200 shadow-lg"
-            >
-              {exportError} ✕
-            </button>
+            <Toast variant="error" onDismiss={() => setExportError(null)}>
+              {exportError}
+            </Toast>
           )}
         </main>
       </div>

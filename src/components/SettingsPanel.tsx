@@ -1,5 +1,5 @@
-import { type ReactNode } from 'react'
-import { RotateCcw, X } from 'lucide-react'
+import { useMemo, type ReactNode } from 'react'
+import { Boxes, Check, RotateCcw, X } from 'lucide-react'
 import {
   ASPECT_RATIO_PRESETS,
   GAP_MAX,
@@ -12,6 +12,7 @@ import {
 } from '../lib/layout'
 import { useSettings } from '../state/SettingsContext'
 import { cn } from '../lib/cn'
+import { useRovingRadioGroup } from '../hooks/useRovingRadioGroup'
 import { IconButton } from './ui/IconButton'
 import { SegmentedControl, type SegmentOption } from './ui/SegmentedControl'
 import { Slider } from './ui/Slider'
@@ -30,7 +31,7 @@ const FITS: SegmentOption<DynamicFit>[] = [
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">{title}</h3>
+      <h3 className="text-text-muted text-xs font-semibold tracking-wide uppercase">{title}</h3>
       {children}
     </section>
   )
@@ -43,11 +44,15 @@ interface SettingsPanelProps {
 /** The full settings panel — layout mode, mode-specific options, zoom and gap. */
 export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const { settings, update, reset } = useSettings()
+  const { setItemRef, handleKeyDown, tabIndexFor } = useRovingRadioGroup(
+    useMemo(() => ASPECT_RATIO_PRESETS as readonly string[], []),
+    settings.aspectRatio,
+  )
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-border flex items-center justify-between border-b px-4 py-3">
-        <h2 className="text-sm font-semibold text-zinc-100">Settings</h2>
+        <h2 className="text-text text-sm font-semibold">Settings</h2>
         <div className="flex items-center gap-1">
           <IconButton label="Reset settings" onClick={reset}>
             <RotateCcw className="h-4 w-4" />
@@ -78,7 +83,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
               value={settings.dynamicFit}
               onChange={(dynamicFit) => update({ dynamicFit })}
             />
-            <p className="text-xs text-zinc-500">
+            <p className="text-text-muted text-xs">
               {settings.dynamicFit === 'preserve'
                 ? 'Rows keep every image’s aspect ratio.'
                 : 'Rows are equal height with flush, cropped edges.'}
@@ -94,18 +99,24 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                 return (
                   <button
                     key={preset}
+                    ref={setItemRef(preset)}
                     type="button"
                     role="radio"
                     aria-checked={active}
+                    tabIndex={tabIndexFor(preset)}
                     onClick={() => update({ aspectRatio: preset })}
+                    onKeyDown={handleKeyDown(preset, (v) =>
+                      update({ aspectRatio: v as typeof preset }),
+                    )}
                     className={cn(
-                      'rounded-md border px-2 py-1.5 text-sm font-medium transition-colors',
+                      'flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors',
                       'focus-visible:ring-accent-hover focus-visible:ring-2 focus-visible:outline-none',
                       active
-                        ? 'border-accent bg-accent/15 text-white'
-                        : 'border-border text-zinc-300 hover:text-white',
+                        ? 'border-accent bg-accent/15 text-text'
+                        : 'border-border text-text-muted hover:text-text',
                     )}
                   >
+                    {active && <Check className="h-3.5 w-3.5 text-accent" aria-hidden />}
                     {preset}
                   </button>
                 )
@@ -135,12 +146,27 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
           />
         </Section>
 
-        <p className="text-xs text-zinc-500">
+        <p className="text-text-muted text-xs">
           Tip: hold <kbd className="bg-surface-2 rounded px-1">Ctrl</kbd>/
           <kbd className="bg-surface-2 rounded px-1">⌘</kbd> and scroll, or pinch, over the grid to
-          zoom.
+          zoom. Press <kbd className="bg-surface-2 rounded px-1">F</kbd> to hide menus (focus
+          mode); <kbd className="bg-surface-2 rounded px-1">Esc</kbd> brings them back.
         </p>
+      </div>
+
+      <div className="border-border border-t px-4 py-3">
+        <a
+          href="https://open.estopia.net"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Estopia open-source projects (open.estopia.net)"
+          className="text-text-faint hover:text-text-muted inline-flex items-center gap-1.5 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
+        >
+          <Boxes className="h-3.5 w-3.5" aria-hidden />
+          open.estopia.net
+        </a>
       </div>
     </div>
   )
 }
+

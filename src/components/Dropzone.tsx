@@ -24,8 +24,8 @@ export function Dropzone({ onBrowse, isDragging }: DropzoneProps) {
         <div className="mb-4 rounded-full bg-surface-2 p-4 text-accent">
           <ImageUp className="h-8 w-8" aria-hidden />
         </div>
-        <h2 className="text-lg font-semibold text-zinc-100">Drop images to tessellate</h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="text-text text-lg font-semibold">Drop images to tessellate</h2>
+        <p className="text-text-muted mt-1 text-sm">
           Drag &amp; drop a batch of images here, or browse to select. Everything stays in your
           browser — nothing is ever uploaded.
         </p>
