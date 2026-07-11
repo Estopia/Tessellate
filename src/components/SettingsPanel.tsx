@@ -1,18 +1,25 @@
-import { useMemo, type ReactNode } from 'react'
-import { Boxes, Check, RotateCcw, X } from 'lucide-react'
+import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import { Boxes, Check, HelpCircle, RotateCcw, X } from 'lucide-react'
 import {
+  ADJUSTMENT_MAX,
+  ADJUSTMENT_MIN,
   ASPECT_RATIO_PRESETS,
+  CUSTOM_ASPECT_MAX,
+  CUSTOM_ASPECT_MIN,
   GAP_MAX,
   GAP_MIN,
   ZOOM_MAX,
   ZOOM_MIN,
   ZOOM_STEP,
+  type AspectRatioPreset,
   type DynamicFit,
   type LayoutMode,
 } from '../lib/layout'
 import { useSettings } from '../state/SettingsContext'
+import { usePresets } from '../hooks/usePresets'
 import { cn } from '../lib/cn'
 import { useRovingRadioGroup } from '../hooks/useRovingRadioGroup'
+import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
 import { SegmentedControl, type SegmentOption } from './ui/SegmentedControl'
 import { Slider } from './ui/Slider'
@@ -28,6 +35,8 @@ const FITS: SegmentOption<DynamicFit>[] = [
   { value: 'crop', label: 'Crop to fill', title: 'Uniform rows with flush edges' },
 ]
 
+const ASPECT_OPTIONS: AspectRatioPreset[] = [...ASPECT_RATIO_PRESETS, 'custom']
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3">
@@ -39,21 +48,35 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 interface SettingsPanelProps {
   onClose?: () => void
+  onShowShortcuts?: () => void
 }
 
 /** The full settings panel — layout mode, mode-specific options, zoom and gap. */
-export function SettingsPanel({ onClose }: SettingsPanelProps) {
+export function SettingsPanel({ onClose, onShowShortcuts }: SettingsPanelProps) {
   const { settings, update, reset } = useSettings()
+  const { presets, savePreset, deletePreset } = usePresets()
+  const [presetName, setPresetName] = useState('')
   const { setItemRef, handleKeyDown, tabIndexFor } = useRovingRadioGroup(
-    useMemo(() => ASPECT_RATIO_PRESETS as readonly string[], []),
+    useMemo(() => ASPECT_OPTIONS as readonly string[], []),
     settings.aspectRatio,
   )
+
+  const handleSavePreset = () => {
+    if (!presetName.trim()) return
+    savePreset(presetName, settings)
+    setPresetName('')
+  }
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-border flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-text text-sm font-semibold">Settings</h2>
         <div className="flex items-center gap-1">
+          {onShowShortcuts && (
+            <IconButton label="Keyboard shortcuts" onClick={onShowShortcuts}>
+              <HelpCircle className="h-4 w-4" />
+            </IconButton>
+          )}
           <IconButton label="Reset settings" onClick={reset}>
             <RotateCcw className="h-4 w-4" />
           </IconButton>
@@ -94,7 +117,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
         {settings.mode === 'fixed' && (
           <Section title="Aspect ratio">
             <div role="radiogroup" aria-label="Aspect ratio" className="grid grid-cols-3 gap-1.5">
-              {ASPECT_RATIO_PRESETS.map((preset) => {
+              {ASPECT_OPTIONS.map((preset) => {
                 const active = settings.aspectRatio === preset
                 return (
                   <button
@@ -109,7 +132,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                       update({ aspectRatio: v as typeof preset }),
                     )}
                     className={cn(
-                      'flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors',
+                      'flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors capitalize',
                       'focus-visible:ring-accent-hover focus-visible:ring-2 focus-visible:outline-none',
                       active
                         ? 'border-accent bg-accent/15 text-text'
@@ -122,6 +145,48 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                 )
               })}
             </div>
+
+            {settings.aspectRatio === 'custom' && (
+              <div className="flex items-center gap-2">
+                <label className="flex-1 text-xs">
+                  <span className="text-text-muted mb-1 block">Width</span>
+                  <input
+                    type="number"
+                    min={CUSTOM_ASPECT_MIN}
+                    max={CUSTOM_ASPECT_MAX}
+                    value={settings.customAspectRatio.w}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      update({
+                        customAspectRatio: {
+                          ...settings.customAspectRatio,
+                          w: Number(e.target.value) || 1,
+                        },
+                      })
+                    }
+                    className="border-border bg-surface-2 text-text w-full rounded-md border px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
+                  />
+                </label>
+                <span className="text-text-faint mt-4">:</span>
+                <label className="flex-1 text-xs">
+                  <span className="text-text-muted mb-1 block">Height</span>
+                  <input
+                    type="number"
+                    min={CUSTOM_ASPECT_MIN}
+                    max={CUSTOM_ASPECT_MAX}
+                    value={settings.customAspectRatio.h}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      update({
+                        customAspectRatio: {
+                          ...settings.customAspectRatio,
+                          h: Number(e.target.value) || 1,
+                        },
+                      })
+                    }
+                    className="border-border bg-surface-2 text-text w-full rounded-md border px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
+                  />
+                </label>
+              </div>
+            )}
           </Section>
         )}
 
@@ -146,11 +211,92 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
           />
         </Section>
 
+        <Section title="Adjustments">
+          <Slider
+            label="Brightness"
+            min={ADJUSTMENT_MIN}
+            max={ADJUSTMENT_MAX}
+            value={settings.adjustments.brightness}
+            onChange={(brightness) => update({ adjustments: { ...settings.adjustments, brightness } })}
+            format={(v) => `${v}%`}
+          />
+          <Slider
+            label="Contrast"
+            min={ADJUSTMENT_MIN}
+            max={ADJUSTMENT_MAX}
+            value={settings.adjustments.contrast}
+            onChange={(contrast) => update({ adjustments: { ...settings.adjustments, contrast } })}
+            format={(v) => `${v}%`}
+          />
+          <Slider
+            label="Saturation"
+            min={ADJUSTMENT_MIN}
+            max={ADJUSTMENT_MAX}
+            value={settings.adjustments.saturate}
+            onChange={(saturate) => update({ adjustments: { ...settings.adjustments, saturate } })}
+            format={(v) => `${v}%`}
+          />
+          <p className="text-text-muted text-xs">Applied to every image, in preview and export.</p>
+        </Section>
+
+        <Section title="Presets">
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
+              placeholder="Preset name"
+              aria-label="New preset name"
+              className="border-border bg-surface-2 text-text placeholder:text-text-faint w-full rounded-md border px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
+            />
+            <Button variant="secondary" onClick={handleSavePreset} disabled={!presetName.trim()}>
+              Save
+            </Button>
+          </div>
+          {presets.length > 0 && (
+            <ul className="space-y-1">
+              {presets.map((preset) => (
+                <li
+                  key={preset.id}
+                  className="border-border flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
+                >
+                  <button
+                    type="button"
+                    onClick={() => update(preset.settings)}
+                    className="text-text hover:text-accent flex-1 truncate text-left text-sm focus-visible:ring-2 focus-visible:ring-accent-hover focus-visible:outline-none"
+                  >
+                    {preset.name}
+                  </button>
+                  <IconButton label={`Delete preset ${preset.name}`} onClick={() => deletePreset(preset.id)}>
+                    <X className="h-3.5 w-3.5" />
+                  </IconButton>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <Section title="Privacy">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.persistImages}
+              onChange={(e) => update({ persistImages: e.target.checked })}
+              className="accent-accent mt-0.5 h-4 w-4 rounded"
+            />
+            <span className="text-text-muted">
+              Keep images between reloads (stored only in this browser). Off by default — turning
+              this off again immediately deletes anything saved.
+            </span>
+          </label>
+        </Section>
+
         <p className="text-text-muted text-xs">
           Tip: hold <kbd className="bg-surface-2 rounded px-1">Ctrl</kbd>/
           <kbd className="bg-surface-2 rounded px-1">⌘</kbd> and scroll, or pinch, over the grid to
-          zoom. Press <kbd className="bg-surface-2 rounded px-1">F</kbd> to hide menus (focus
-          mode); <kbd className="bg-surface-2 rounded px-1">Esc</kbd> brings them back.
+          zoom. Press <kbd className="bg-surface-2 rounded px-1">?</kbd> for all keyboard
+          shortcuts.
         </p>
       </div>
 

@@ -1,4 +1,5 @@
-import type { CropRect, Dimensions, LayoutInput } from './types'
+import { ASPECT_RATIOS, CUSTOM_ASPECT_MAX, CUSTOM_ASPECT_MIN } from './constants'
+import type { CropRect, Dimensions, ImageAdjustments, LayoutInput, LayoutSettings } from './types'
 import { FULL_CROP } from './types'
 
 const MIN_TARGET_TILE_WIDTH = 120
@@ -33,6 +34,41 @@ export const columnsFor = ({ items, containerWidth, settings }: LayoutInput) => 
   const rawColumns = Math.floor((containerWidth + gap) / (targetTileWidth + gap))
 
   return clamp(rawColumns, 1, items.length)
+}
+
+/**
+ * Resolves the effective width/height ratio for Fixed Scale mode: either a
+ * concrete preset (e.g. '4:3') or the free-form `customAspectRatio`, clamped
+ * to a sane range and falling back to square if invalid.
+ */
+export function resolveAspectRatio(settings: Pick<LayoutSettings, 'aspectRatio' | 'customAspectRatio'>): number {
+  if (settings.aspectRatio !== 'custom') {
+    return ASPECT_RATIOS[settings.aspectRatio]
+  }
+
+  const w = clamp(settings.customAspectRatio?.w ?? 1, CUSTOM_ASPECT_MIN, CUSTOM_ASPECT_MAX)
+  const h = clamp(settings.customAspectRatio?.h ?? 1, CUSTOM_ASPECT_MIN, CUSTOM_ASPECT_MAX)
+  const ratio = w / h
+
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : 1
+}
+
+/** True when every adjustment is at its neutral (100%) value — lets callers skip applying a filter entirely. */
+export function isDefaultAdjustments(adjustments: ImageAdjustments): boolean {
+  return adjustments.brightness === 100 && adjustments.contrast === 100 && adjustments.saturate === 100
+}
+
+/**
+ * Builds a CSS/canvas `filter` value from adjustments (both accept the same
+ * `brightness()/contrast()/saturate()` function syntax), or `'none'` when the
+ * adjustments are all neutral.
+ */
+export function adjustmentsToFilter(adjustments: ImageAdjustments): string {
+  if (isDefaultAdjustments(adjustments)) {
+    return 'none'
+  }
+
+  return `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%) saturate(${adjustments.saturate}%)`
 }
 
 /**

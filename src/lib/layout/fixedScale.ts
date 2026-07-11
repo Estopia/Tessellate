@@ -1,13 +1,13 @@
-import { ASPECT_RATIOS } from './constants'
 import type { LayoutInput, LayoutRect, LayoutResult } from './types'
-import { aspectFor, columnsFor, coverCrop, normalizeGap } from './util'
+import { aspectFor, columnsFor, coverCrop, normalizeGap, resolveAspectRatio } from './util'
 
 /**
  * Computes a fixed-scale uniform grid where every image shares one cell size.
  *
  * Zoom maps to a target tile width, which determines the number of columns.
- * Each cell uses the configured aspect-ratio preset and each source image is
- * center-cropped with cover semantics to fill that identical cell.
+ * Each cell uses the configured aspect-ratio preset (or custom ratio) and
+ * each source image is center-cropped with cover semantics to fill that
+ * identical cell.
  */
 export function fixedScaleLayout(input: LayoutInput): LayoutResult {
   const { items, containerWidth, settings } = input
@@ -19,7 +19,7 @@ export function fixedScaleLayout(input: LayoutInput): LayoutResult {
 
   const gap = normalizeGap(settings.gap)
   const cellWidth = (containerWidth - gap * (cols - 1)) / cols
-  const cellHeight = cellWidth / ASPECT_RATIOS[settings.aspectRatio]
+  const cellHeight = cellWidth / resolveAspectRatio(settings)
   const rects: LayoutRect[] = items.map((item, index) => {
     const col = index % cols
     const row = Math.floor(index / cols)

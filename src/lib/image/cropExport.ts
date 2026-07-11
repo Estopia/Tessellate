@@ -5,6 +5,8 @@ export type ExportOptions = {
   format?: 'image/png' | 'image/jpeg' | 'image/webp'
   quality?: number
   background?: string
+  /** CSS/canvas `filter` value (e.g. from `adjustmentsToFilter`), applied before drawing. */
+  filter?: string
 }
 
 /**
@@ -35,6 +37,10 @@ export async function cropImageToBlob(
   if (format === 'image/jpeg' || options.background) {
     context.fillStyle = options.background ?? '#0b0c0f'
     context.fillRect(0, 0, canvas.width, canvas.height)
+  }
+
+  if (options.filter && options.filter !== 'none') {
+    context.filter = options.filter
   }
 
   context.drawImage(

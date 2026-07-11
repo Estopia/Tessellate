@@ -20,15 +20,32 @@ interface GalleryProps {
   onRemove: (id: string) => void
   onDownload: (image: ImageItem, rect: LayoutRect) => void
   onOpen: (index: number) => void
+  onRotate: (id: string) => void
+  onFlip: (id: string) => void
+  selectionMode: boolean
+  isSelected: (id: string) => boolean
+  onToggleSelect: (id: string) => void
 }
 
 /**
  * Renders the computed layout as an absolutely-positioned grid and wires up
  * drag-to-reorder via dnd-kit. Mouse uses a small movement threshold (so a
- * click opens the lightbox), touch uses press-and-hold (so the grid can still
+ * click opens the lightbox, touch uses press-and-hold (so the grid can still
  * be scrolled), and keyboard reordering is supported.
  */
-export function Gallery({ images, layout, onReorder, onRemove, onDownload, onOpen }: GalleryProps) {
+export function Gallery({
+  images,
+  layout,
+  onReorder,
+  onRemove,
+  onDownload,
+  onOpen,
+  onRotate,
+  onFlip,
+  selectionMode,
+  isSelected,
+  onToggleSelect,
+}: GalleryProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
@@ -60,6 +77,11 @@ export function Gallery({ images, layout, onReorder, onRemove, onDownload, onOpe
                 onRemove={onRemove}
                 onDownload={onDownload}
                 onOpen={onOpen}
+                onRotate={onRotate}
+                onFlip={onFlip}
+                selectionMode={selectionMode}
+                isSelected={isSelected(image.id)}
+                onToggleSelect={onToggleSelect}
               />
             )
           })}

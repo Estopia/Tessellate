@@ -31,8 +31,24 @@ export type LayoutMode = 'dynamic' | 'fixed' | 'masonry'
 /** Sub-behaviour for the Dynamic Fit mode. */
 export type DynamicFit = 'preserve' | 'crop'
 
-/** Supported Fixed Scale aspect ratios, expressed as `width:height`. */
-export type AspectRatioPreset = '1:1' | '4:3' | '3:2' | '16:9' | '3:4' | '2:3'
+/** Supported Fixed Scale aspect ratios, expressed as `width:height`, plus a free-form custom ratio. */
+export type AspectRatioPreset = '1:1' | '4:3' | '3:2' | '16:9' | '3:4' | '2:3' | 'custom'
+
+/** A free-form width:height ratio used when `aspectRatio === 'custom'`. */
+export interface CustomAspectRatio {
+  w: number
+  h: number
+}
+
+/** Global, non-destructive visual adjustments applied to every image (preview + export). */
+export interface ImageAdjustments {
+  /** Percent, 100 = unchanged. */
+  brightness: number
+  /** Percent, 100 = unchanged. */
+  contrast: number
+  /** Percent, 100 = unchanged. */
+  saturate: number
+}
 
 /** All user-tunable layout settings (persisted to localStorage). */
 export interface LayoutSettings {
@@ -42,6 +58,8 @@ export interface LayoutSettings {
   dynamicFit: DynamicFit
   /** Aspect ratio used by Fixed Scale mode. */
   aspectRatio: AspectRatioPreset
+  /** Free-form ratio used when `aspectRatio === 'custom'`. */
+  customAspectRatio: CustomAspectRatio
   /** Gap between images, in CSS pixels. */
   gap: number
   /**
@@ -50,6 +68,10 @@ export interface LayoutSettings {
    * Each algorithm maps this to its own parameter (row height / columns).
    */
   zoom: number
+  /** Global brightness/contrast/saturation adjustments (preview + export). */
+  adjustments: ImageAdjustments
+  /** Opt-in: keep uploaded images in IndexedDB so they survive a reload. Off by default for privacy. */
+  persistImages: boolean
 }
 
 /**

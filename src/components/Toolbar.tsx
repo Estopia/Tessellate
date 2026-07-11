@@ -1,8 +1,22 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { ChevronDown, Download, ImagePlus, Loader2, Trash2 } from 'lucide-react'
+import {
+  CheckSquare,
+  ChevronDown,
+  Download,
+  ImagePlus,
+  Loader2,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Button } from './ui/Button'
+import { IconButton } from './ui/IconButton'
 
 export type ExportFormat = 'image/png' | 'image/jpeg'
+
+interface ExportDimensions {
+  width: number
+  height: number
+}
 
 interface ToolbarProps {
   count: number
@@ -10,6 +24,14 @@ interface ToolbarProps {
   onAdd: () => void
   onClear: () => void
   onExport: (format: ExportFormat) => void
+  exportDimensions: ExportDimensions | null
+  selectionMode: boolean
+  onToggleSelectionMode: () => void
+  selectionCount: number
+  onSelectAll: () => void
+  onClearSelection: () => void
+  onBulkRemove: () => void
+  onBulkDownload: () => void
 }
 
 const EXPORT_OPTIONS: { format: ExportFormat; primary: string; secondary: string }[] = [
@@ -17,8 +39,22 @@ const EXPORT_OPTIONS: { format: ExportFormat; primary: string; secondary: string
   { format: 'image/jpeg', primary: 'Grid as JPG', secondary: 'Smaller file size' },
 ]
 
-/** Header actions: image count, add, export (PNG/JPG menu) and clear. */
-export function Toolbar({ count, isExporting, onAdd, onClear, onExport }: ToolbarProps) {
+/** Header actions: image count, add, export (PNG/JPG menu), clear, and multi-select bulk actions. */
+export function Toolbar({
+  count,
+  isExporting,
+  onAdd,
+  onClear,
+  onExport,
+  exportDimensions,
+  selectionMode,
+  onToggleSelectionMode,
+  selectionCount,
+  onSelectAll,
+  onClearSelection,
+  onBulkRemove,
+  onBulkDownload,
+}: ToolbarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const hasImages = count > 0
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -68,6 +104,41 @@ export function Toolbar({ count, isExporting, onAdd, onClear, onExport }: Toolba
     }
   }
 
+  if (selectionMode) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-text-muted text-sm">
+          {selectionCount} of {count} selected
+        </span>
+        <Button variant="ghost" onClick={onSelectAll}>
+          Select all
+        </Button>
+        <Button variant="ghost" disabled={selectionCount === 0} onClick={onClearSelection}>
+          Clear
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={selectionCount === 0}
+          icon={<Download className="h-4 w-4" />}
+          onClick={onBulkDownload}
+        >
+          <span className="hidden sm:inline">Download</span>
+        </Button>
+        <Button
+          variant="danger"
+          disabled={selectionCount === 0}
+          icon={<Trash2 className="h-4 w-4" />}
+          onClick={onBulkRemove}
+        >
+          <span className="hidden sm:inline">Remove</span>
+        </Button>
+        <IconButton label="Exit selection mode" onClick={onToggleSelectionMode}>
+          <X className="h-4 w-4" />
+        </IconButton>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2">
       <span className="text-text-muted hidden text-sm sm:inline">
@@ -77,6 +148,14 @@ export function Toolbar({ count, isExporting, onAdd, onClear, onExport }: Toolba
       <Button variant="secondary" icon={<ImagePlus className="h-4 w-4" />} onClick={onAdd}>
         <span className="hidden sm:inline">Add</span>
       </Button>
+
+      <IconButton
+        label="Select multiple images"
+        onClick={onToggleSelectionMode}
+        disabled={!hasImages}
+      >
+        <CheckSquare className="h-5 w-5" />
+      </IconButton>
 
       <div className="relative">
         <Button
@@ -109,7 +188,7 @@ export function Toolbar({ count, isExporting, onAdd, onClear, onExport }: Toolba
             <div
               role="menu"
               aria-label="Export format"
-              className="border-border bg-surface absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-lg border shadow-xl"
+              className="border-border bg-surface absolute right-0 z-50 mt-1 w-52 overflow-hidden rounded-lg border shadow-xl"
             >
               {EXPORT_OPTIONS.map((opt, index) => (
                 <MenuItem
@@ -120,7 +199,11 @@ export function Toolbar({ count, isExporting, onAdd, onClear, onExport }: Toolba
                   onClick={() => pick(opt.format)}
                   onKeyDown={handleMenuKeyDown(index)}
                   primary={opt.primary}
-                  secondary={opt.secondary}
+                  secondary={
+                    exportDimensions
+                      ? `${opt.secondary} · ${exportDimensions.width}×${exportDimensions.height}px`
+                      : opt.secondary
+                  }
                 />
               ))}
             </div>
