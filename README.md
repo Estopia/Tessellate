@@ -14,6 +14,7 @@ Tessellate helps you upload a batch of images and arrange them into dynamic grid
 - [Layout Modes](#layout-modes)
 - [Project Structure](#project-structure)
 - [Docker & Deployment](#docker--deployment)
+- [Cloudflare Workers](#cloudflare-workers)
 - [Privacy](#privacy)
 - [Contributing](#contributing)
 - [License](#license)
@@ -79,6 +80,8 @@ http://192.168.0.<your-host>:5173
 | `pnpm dev` | Start the Vite development server on port 5173 with LAN access. |
 | `pnpm build` | Create a production build. |
 | `pnpm preview` | Preview the production build on port 4173 with LAN access. |
+| `pnpm cf:dev` | Build and run the app locally with Wrangler's Workers runtime. |
+| `pnpm cf:deploy` | Build and deploy the app to Cloudflare Workers. |
 | `pnpm lint` | Run ESLint checks. |
 | `pnpm lint:fix` | Run ESLint and apply safe fixes. |
 | `pnpm typecheck` | Run TypeScript type checking. |
@@ -113,7 +116,9 @@ http://192.168.0.<your-host>:5173
 │   └── state               # Settings context and localStorage persistence
 ├── Dockerfile              # Multi-stage static build served by nginx
 ├── docker-compose.yml      # Docker Compose deployment entry point
-└── nginx.conf              # Static file server configuration
+├── nginx.conf              # Static file server configuration
+├── wrangler.jsonc          # Cloudflare Workers static assets configuration
+└── public/_headers         # Security and cache headers for Cloudflare
 ```
 
 ## Docker & Deployment
@@ -128,11 +133,30 @@ The published port is configurable with `TESSELLATE_PORT` and defaults to `8080`
 
 The container is designed to sit behind an external NGINX or Traefik reverse proxy. The maintainer runs Docker on a remote host, so deployment assumes a static frontend container rather than an application backend.
 
+## Cloudflare Workers
+
+The app can also be deployed as a Cloudflare Worker serving static assets. Wrangler serves the Vite `dist` output and falls back to `index.html` for client-side routes. No Worker runtime code or backend is required.
+
+Authenticate with Cloudflare, then build and deploy:
+
+```bash
+pnpm exec wrangler login
+pnpm cf:deploy
+```
+
+To build and preview locally with the Workers runtime, run:
+
+```bash
+pnpm cf:dev
+```
+
+For Cloudflare Workers Builds, use `pnpm build` as the build command and `pnpm exec wrangler deploy` as the deploy command. Static asset cache and security headers are configured in `public/_headers`.
+
 ## Privacy
 
 - Tessellate is 100% client-side.
 - There is no backend upload endpoint; images never leave the browser.
-- The production server is nginx serving static files only.
+- Production hosting serves static files only; there is no application backend.
 - Nothing is stored server-side.
 - Settings are stored in localStorage.
 - Uploaded images are represented as blob object URLs and are not persisted across reloads.
